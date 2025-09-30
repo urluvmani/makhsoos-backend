@@ -19,10 +19,21 @@ connectDB();
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: ["http://localhost:5173", "https://makhsoos.vercel.app/"], 
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",     // Dev frontend
+      "https://makhsoos.vercel.app" // Prod frontend
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // ✅ allowed methods
+    allowedHeaders: ["Content-Type", "Authorization"], // ✅ allowed headers
+    credentials: true, // ✅ allow cookies
+  })
+);
+
+// ✅ Handle preflight (OPTIONS) requests explicitly
+app.options("*", cors());
+
 
 app.use(express.json());
 app.use(cookieParser());
