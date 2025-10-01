@@ -6,9 +6,9 @@ import connectDB from "./config/db.js";
 
 import productRoutes from "./routes/productRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
-import testEmailRoutes from "./routes/testEmailRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import sendEmail from "./utils/sendEmail.js";
 
 dotenv.config();
 
@@ -63,13 +63,22 @@ app.use(cookieParser());
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api", testEmailRoutes);
 app.use("/api/admin", adminRoutes);
 
 // Test route
 app.get("/", (req, res) => {
   res.send("Makhsoos Backend is Running 🚀 with MongoDB + Cookies");
 });
+app.get("/test-email", async (req, res) => {
+  try {
+    await sendEmail("yourEmail@gmail.com", "Test Email", "Hello from backend");
+    res.send("✅ Email sent test route");
+  } catch (err) {
+    console.error("❌ Test email error:", err.message);
+    res.status(500).send("Failed: " + err.message);
+  }
+});
+
 
 // Server Start
 const PORT = process.env.PORT || 5000;
