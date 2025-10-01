@@ -1,33 +1,21 @@
 import nodemailer from "nodemailer";
 
 const sendEmail = async (to, subject, text) => {
-  console.log("🚀 sendEmail() function CALLED");
-console.log("To:", to, "Subject:", subject);
+  console.log("🚀 sendEmail() called:", { to, subject });
 
   try {
     // Gmail Transporter
-   const gmailTransporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  logger: true,   // 🔎 log SMTP conversation
-  debug: true     // 🔎 show debug output
-});
+    const gmailTransporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
 
-// connection test
-gmailTransporter.verify((error, success) => {
-  if (error) {
-    console.error("❌ SMTP connection failed:", error);
-  } else {
-    console.log("✅ SMTP server is ready to take messages");
-  }
-});
-
-
+    // ✅ Directly send mail (skip verify inside request)
     await gmailTransporter.sendMail({
       from: `"Makhsoos Store" <${process.env.EMAIL_USER}>`,
       to,
@@ -35,12 +23,12 @@ gmailTransporter.verify((error, success) => {
       text,
     });
 
-    console.log(`✅ Email sent successfully via Gmail → ${to}`);
+    console.log(`✅ Email sent successfully → ${to}`);
     return true;
   } catch (gmailError) {
     console.error("❌ Gmail failed:", gmailError.message);
 
-    // Fallback Transporter (Sendinblue/Brevo)
+    // ✅ Fallback SMTP
     if (process.env.FALLBACK_USER && process.env.FALLBACK_PASS) {
       try {
         const fallbackTransporter = nodemailer.createTransport({
@@ -64,10 +52,12 @@ gmailTransporter.verify((error, success) => {
         return true;
       } catch (fallbackError) {
         console.error("❌ Fallback failed:", fallbackError.message);
-        throw new Error("Both Gmail & Fallback SMTP failed.");
+        // Don't throw further, just fail silently
+        return false;
       }
     } else {
-      throw new Error("⚠️ No fallback SMTP configured.");
+      console.warn("⚠️ No fallback SMTP configured, skipping email");
+      return false;
     }
   }
 };

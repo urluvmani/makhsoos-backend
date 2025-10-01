@@ -12,13 +12,13 @@ const router = express.Router();
  */
 
 // 📌 Place new order (PUBLIC)
-// 📌 Place new order (PUBLIC)
 router.post("/", async (req, res) => {
   try {
     const { name, email, phone, address, items, total } = req.body;
 
     console.log("🚀 New order request received:", { name, email, total });
 
+    // ✅ Save order in DB
     const order = await Order.create({
       name,
       email,
@@ -29,14 +29,15 @@ router.post("/", async (req, res) => {
       status: "Pending",
     });
 
-    // 📧 Confirmation email bhejo (with logs)
+    // ✅ Immediately respond to frontend
+    res.status(201).json(order);
+
+    // 📧 Background email (non-blocking)
     if (email) {
-      console.log("📧 About to call sendEmail() with:", email);
-      try {
-        await sendEmail(
-          email,
-          "Order Confirmation - Makhsoos Store",
-          `
+      sendEmail(
+        email,
+        "Order Confirmation - Makhsoos Store",
+        `
 Dear ${name},
 
 ✅ Thank you for your order!
@@ -48,26 +49,24 @@ We will update you once your order is shipped.
 
 Regards,
 Makhsoos Store
-          `
+        `
+      )
+        .then(() => console.log("✅ Confirmation email sent to:", email))
+        .catch((err) =>
+          console.error("❌ Email sending failed (ignored):", err.message)
         );
-        console.log("✅ Order confirmation email sent to:", email);
-      } catch (err) {
-        console.error("❌ Failed to send order confirmation email:", err.message);
-      }
     } else {
       console.warn("⚠️ No email provided, skipping confirmation email");
     }
-
-    res.status(201).json(order);
   } catch (error) {
     console.error("❌ Error placing order:", error.message);
-    res.status(500).json({ message: "Error placing order", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error placing order", error: error.message });
   }
 });
 
-
-// 📌 Customer can fetch their own orders (no login required)
-// Optionally filter by phone/email
+// 📌 Customer can fetch their own orders
 router.get("/", async (req, res) => {
   try {
     const { email, phone } = req.query;
@@ -120,13 +119,14 @@ router.put("/:id/status", protectAdmin, async (req, res) => {
     order.status = req.body.status || order.status;
     await order.save();
 
-    // 📧 Status update email
+    res.json({ message: "Order status updated", order });
+
+    // 📧 Background email for status update
     if (order.email) {
-      try {
-        await sendEmail(
-          order.email,
-          "Order Status Update - Makhsoos Store",
-          `
+      sendEmail(
+        order.email,
+        "Order Status Update - Makhsoos Store",
+        `
 Dear ${order.name},
 
 ℹ️ Your order (ID: ${order._id}) status has been updated.
@@ -135,18 +135,20 @@ Current Status: ${order.status}
 Thank you for shopping with us!
 Regards,
 Makhsoos Store
-          `
+        `
+      )
+        .then(() =>
+          console.log("✅ Status update email sent to:", order.email)
+        )
+        .catch((err) =>
+          console.error("❌ Status update email failed (ignored):", err.message)
         );
-        console.log("✅ Order status update email sent to:", order.email);
-      } catch (err) {
-        console.error("❌ Failed to send status update email:", err.message);
-      }
     }
-
-    res.json({ message: "Order status updated & email sent", order });
   } catch (error) {
     console.error("❌ Error updating order status:", error.message);
-    res.status(500).json({ message: "Error updating order status", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error updating order status", error: error.message });
   }
 });
 
